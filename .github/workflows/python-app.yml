@@ -36,7 +36,7 @@ jobs:
 
     - name: Start FastAPI server
       run: |
-        uvicorn api:app --host 127.0.0.1 --port 8001 &
+        uvicorn api:app --host 0.0.0.0 --port 8001  &
       continue-on-error: true  # Ignore errors in case FastAPI fails
 
     - name: Wait for API to start
