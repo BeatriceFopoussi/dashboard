@@ -17,8 +17,8 @@ from pandas import DataFrame
 API_URL  = "https://dashboard-2-6eo5.onrender.com/"
 
 # Chargement des dataset
-data_train = pd.read_csv('train_df.csv')
-data_test = pd.read_csv('test_df.csv')
+data_train = pd.read_csv('train_df.csv', nrows=100)
+data_test = pd.read_csv('test_df.csv', nrows= 100)
 
 def minmax_scale(df, scaler):
     """Preprocessing du dataframe en paramètre avec le scaler renseigné.
