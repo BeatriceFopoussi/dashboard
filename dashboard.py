@@ -20,6 +20,21 @@ API_URL  = "https://dashboard-2-6eo5.onrender.com/"
 data_train = pd.read_csv('train_df.csv', nrows=100)
 data_test = pd.read_csv('test_df.csv', nrows= 100)
 
+def print_json(data, indent=0):
+    for key, value in data.items():
+        print(" " * indent + f"{key}: {value}")
+        if isinstance(value, dict):  # Si la valeur est un dictionnaire, parcourir récursivement
+            print_json(value, indent + 4)
+        elif isinstance(value, list):  # Si la valeur est une liste, afficher chaque élément
+            for item in value:
+                if isinstance(item, dict):
+                    print_json(item, indent + 4)
+                else:
+                    print(" " * (indent + 4) + str(item))
+
+# Afficher les clés et valeurs
+#
+
 def minmax_scale(df, scaler):
     """Preprocessing du dataframe en paramètre avec le scaler renseigné.
     :param: df, scaler (str).
@@ -79,23 +94,25 @@ def jauge_score(proba):
     st.plotly_chart(fig)
 
 
-def get_shap_val_local(client_id, i = 0):
+def get_shap_val_local(client_id = 0):
     """Récupère les shap value du client via l'API pour une interprétation locale.
     :param: client_id (int).
     :return: shap_local
     """
     url_get_shap_local = API_URL + "shaplocal/" + str(client_id)
+    print('valeur url', url_get_shap_local)
 
     response = requests.get(url_get_shap_local)
     res = json.loads(response.content)
-
+    print_json(res)
+    print('valeur de  res',res) 
     data = res['data'][0]
     data = np.array(data, dtype='float')
     feature_names = res['feature_names']
 
     values = res['shap_values'][0]
     values = np.array(values, dtype='float')
-    values = values[:,1]
+    #values = values[:,1]
     base_values = res['base_value'][0]
 
     explanation = shap.Explanation(values=values,
@@ -117,7 +134,7 @@ def get_shap_val_global():
     :param: client_id (int).
     :return: shap_local
     """
-    url_get_shap_global = API_URL + "shap/"
+    url_get_shap_global = API_URL + "shap/" 
 
     response = requests.get(url_get_shap_global)
     data = json.loads(response.content)
@@ -292,8 +309,9 @@ if page == "Interprétation locale":
     locale = st.checkbox("Interprétation locale")
     if locale:
         st.info("Interprétation locale de la prédiction")
-        explanation = get_shap_val_local(id_client_dash, 0)
+        explanation = get_shap_val_local(id_client_dash)
         nb_features = st.slider('Nombre de variables à visualiser', 0, 20, 10)
+
         # Affichage du waterfall plot : shap local
         fig = waterfall_legacy(
             1.0,
@@ -330,13 +348,18 @@ if page == "Interprétation globale":
         data_test_std = minmax_scale(data_test.drop('SK_ID_CURR', axis=1), 'std')
         nb_features = st.slider('Nombre de variables à visualiser', 0, 20, 10)
         fig, ax = plt.subplots()
-        # Affichage du summary plot : shap global
-        ax = shap.summary_plot(np.array(shap_values['shap_values_1'], dtype='float'), data_test_std, plot_type='bar', max_display=nb_features)
-        st.pyplot(fig)
+       # Vérifiez et corrigez la structure des shap_values
+    shap_values_matrix = np.array(shap_values['shap_values_1'], dtype='float')
+    if len(shap_values_matrix.shape) == 1:  # Si c'est un vecteur
+        shap_values_matrix = shap_values_matrix.reshape(1, -1)  # Convertir en matrice 2D
 
-        with st.expander("Explication du graphique", expanded=False):
-            st.caption("Ici sont affichées les caractéristiques influençant de manière globale la décision.")
+    # Affichage du summary plot : shap global
+    fig, ax = plt.subplots()
+    shap.summary_plot(shap_values_matrix, data_test_std, plot_type='bar', max_display=nb_features)
+    st.pyplot(fig)
 
+    with st.expander("Explication du graphique", expanded=False):
+        st.caption("Ici sont affichées les caractéristiques influençant de manière globale la décision.")
     distrib = st.checkbox("Comparaison des distributions")
     if distrib:
         st.info("Comparaison des distributions de plusieurs variables de l'ensemble de données")
@@ -416,5 +439,3 @@ if page == "Interprétation globale":
                        "Une étoile violette représente le client. Ses plus proches voisins sont également "
                        "renseignés sous forme de points de couleurs (rouge pour ceux étant qualifiés comme "
                        "étant en défaut et vert pour les autres).")
-
-
